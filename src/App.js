@@ -1,25 +1,62 @@
-import logo from './logo.svg';
-import './App.css';
+import {BrowserRouter as Router, Switch, Route, Redirect} from 'react-router-dom';
+import {loginRoutes, privateRoutes} from "./routes";
+import {DefaultLayout} from "./Layout";
+import {AuthContextProvider, useAuth} from "./context/AuthContext";
+import './infra/http';
+import {ConversationContextProvider} from "./context/ConversationContext";
+import {SocketProvider} from "./context/SocketContext";
+
+function PrivateRoute({layout: Layout, component: Component, ...rest}) {
+    const {user} = useAuth();
+
+    return (
+        <Route
+            {...rest}
+            render={(props) =>
+                user ? (
+                    <Layout>
+                        <Component {...props} />
+                    </Layout>
+                ) : (
+                    <Redirect to="/login"/>
+                )
+            }
+        />
+    );
+}
 
 function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+    return (
+        <AuthContextProvider>
+            <Router>
+                <Switch>
+                    {loginRoutes.map((route, index) => {
+                        const Page = route.component;
+                        return (
+                            <Route key={index} path={route.path}>
+                                <Page/>
+                            </Route>
+                        );
+                    })}
+                    <ConversationContextProvider>
+                        <SocketProvider>
+                            {privateRoutes.map((route, index) => {
+                                const Layout = route.layout || DefaultLayout;
+                                const Page = route.component;
+                                return (
+                                    <Route key={index} path={route.path} layout={Layout} component={Page}>
+                                        <Layout>
+                                            <Page/>
+                                        </Layout>
+                                    </Route>
+                                );
+                            })}
+                        </SocketProvider>
+                    </ConversationContextProvider>
+                </Switch>
+            </Router>
+        </AuthContextProvider>
+    );
 }
 
 export default App;
